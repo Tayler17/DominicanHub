@@ -4,6 +4,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Products')
 @Controller('products')
@@ -19,33 +20,48 @@ export class ProductsController {
   }
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'List all active products' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'categoryId', required: false })
   @ApiQuery({ name: 'search', required: false })
   findAll(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
   ) {
-    return this.productsService.findAll(page, limit, categoryId, search);
+    return this.productsService.findAll(
+      page ? parseInt(page) : undefined,
+      limit ? parseInt(limit) : undefined,
+      categoryId,
+      search,
+    );
   }
 
   @Get('categories')
+  @Public()
   @ApiOperation({ summary: 'Get all categories' })
-  getCategories() { return this.productsService.getCategories(); }
+  getCategories() {
+    return this.productsService.getCategories();
+  }
 
   @Get('my-products')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current vendor products' })
-  findByVendor(@CurrentUser('id') userId: string, @Query('page') page?: number) {
-    return this.productsService.findByVendor(userId, page);
+  findByVendor(
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: string,
+  ) {
+    return this.productsService.findByVendor(userId, page ? parseInt(page) : undefined);
   }
 
   @Get(':slug')
+  @Public()
   @ApiOperation({ summary: 'Get product by slug' })
-  findOne(@Param('slug') slug: string) { return this.productsService.findOne(slug); }
+  findOne(@Param('slug') slug: string) {
+    return this.productsService.findOne(slug);
+  }
 }
