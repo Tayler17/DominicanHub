@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -31,7 +32,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-        role: (dto.role as string) ?? 'BUYER',
+        role: (dto.role as UserRole) ?? UserRole.BUYER,
       },
       select: {
         id: true,
