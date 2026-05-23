@@ -1,30 +1,20 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
-import { Toaster } from 'sonner';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-
 export const metadata: Metadata = {
-  title: 'Dominican Hub — Marketplace & Logistics',
-  description: 'Digital commerce and logistics infrastructure for the Dominican Republic and the Caribbean diaspora.',
-  keywords: ['Dominican Republic', 'marketplace', 'shipping', 'logistics', 'Caribbean'],
+  title: 'Dominican Hub — Marketplace & Logistica',
+  description: 'Infraestructura de comercio digital para la Republica Dominicana y la diaspora caribena.',
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = await getLocale();
-  const messages = await getMessages();
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased bg-white text-gray-900`}>
-        <NextIntlClientProvider messages={messages}>
-          {children}
-          <Toaster position="top-right" richColors />
-        </NextIntlClientProvider>
-      </body>
+    <html lang="es">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+      </head>
+      <body>{children}</body>
     </html>
   );
 }

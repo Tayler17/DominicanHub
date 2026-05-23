@@ -1,10 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-  }
+:root {
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --c-palm: #1a6b4a;
+  --c-palm-light: #e8f5ef;
+  --c-palm-dark: #0f3d2a;
+  --c-gold: #d4a843;
+  --c-gold-light: #fdf6e3;
+  --c-sand: #f7f3ed;
+  --c-ink: #1a1a1a;
+  --c-muted: #6b6b6b;
+  --c-border: #e8e2d9;
 }
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  background: #fafaf8;
+  color: var(--c-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display { font-family: var(--font-display); }
+
+.btn-primary {
+  background: var(--c-palm);
+  color: white;
+  padding: 0.65rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.btn-primary:hover { background: var(--c-palm-dark); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--c-palm);
+  padding: 0.65rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  border: 1.5px solid var(--c-palm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-outline:hover { background: var(--c-palm-light); }
+
+.card {
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.badge-green { background: var(--c-palm-light); color: var(--c-palm); }
+.badge-gold { background: var(--c-gold-light); color: #92700a; }
