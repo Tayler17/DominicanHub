@@ -6,28 +6,26 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug'],
+    logger: ['error', 'warn', 'log'],
+    rawBody: true, // needed for Stripe webhook signature verification
   });
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('API_PORT', 3001);
+  const port = configService.get<number>('API_PORT', 3002);
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
 
-  // Global prefix
   app.setGlobalPrefix('api');
-
-  // API versioning
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
-  // CORS
   app.enableCors({
     origin: [
-      configService.get<string>('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'),
+      configService.get<string>('NEXT_PUBLIC_APP_URL', 'http://localhost:3001'),
+      'http://localhost:3000',
+      'http://localhost:3001',
     ],
     credentials: true,
   });
 
-  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -37,7 +35,6 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger (dev only)
   if (nodeEnv !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('Dominican Hub API')
@@ -49,11 +46,11 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document, {
       swaggerOptions: { persistAuthorization: true },
     });
-    console.log(`📖 Swagger docs available at http://localhost:${port}/docs`);
+    console.log(`Swagger docs: http://localhost:${port}/docs`);
   }
 
   await app.listen(port);
-  console.log(`🚀 Dominican Hub API running on http://localhost:${port}/api/v1`);
+  console.log(`Dominican Hub API running on http://localhost:${port}/api/v1`);
 }
 
 bootstrap();
