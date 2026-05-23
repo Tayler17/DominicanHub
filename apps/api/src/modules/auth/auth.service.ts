@@ -2,7 +2,6 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
-  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -32,7 +31,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-        role: dto.role || 'BUYER',
+        role: (dto.role as string) ?? 'BUYER',
       },
       select: {
         id: true,
@@ -46,7 +45,6 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
-
     return { user, ...tokens };
   }
 
@@ -76,20 +74,15 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const { passwordHash, ...userWithoutPassword } = user;
+    const { passwordHash: _pw, ...userWithoutPassword } = user;
     const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
-
     return { user: userWithoutPassword, ...tokens };
   }
 
   async refresh(userId: string, refreshToken: string) {
     const stored = await this.prisma.refreshToken.findFirst({
-      where: {
-        userId,
-        token: refreshToken,
-        expiresAt: { gt: new Date() },
-      },
+      where: { userId, token: refreshToken, expiresAt: { gt: new Date() } },
     });
     if (!stored) throw new UnauthorizedException('Invalid or expired refresh token');
 
@@ -99,21 +92,16 @@ export class AuthService {
     });
     if (!user || !user.isActive) throw new UnauthorizedException();
 
-    // Rotate refresh token
     await this.prisma.refreshToken.delete({ where: { id: stored.id } });
     const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
-
     return tokens;
   }
 
   async logout(userId: string, refreshToken?: string) {
     if (refreshToken) {
-      await this.prisma.refreshToken.deleteMany({
-        where: { userId, token: refreshToken },
-      });
+      await this.prisma.refreshToken.deleteMany({ where: { userId, token: refreshToken } });
     } else {
-      // Logout all sessions
       await this.prisma.refreshToken.deleteMany({ where: { userId } });
     }
     return { message: 'Logged out successfully' };
@@ -164,10 +152,7 @@ export class AuthService {
   private async saveRefreshToken(userId: string, token: string) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
-    await this.prisma.refreshToken.create({
-      data: { userId, token, expiresAt },
-    });
-    // Clean up expired tokens for this user
+    await this.prisma.refreshToken.create({ data: { userId, token, expiresAt } });
     await this.prisma.refreshToken.deleteMany({
       where: { userId, expiresAt: { lt: new Date() } },
     });

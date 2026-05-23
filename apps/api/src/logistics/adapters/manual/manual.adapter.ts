@@ -6,12 +6,9 @@ import {
   TrackingStatus,
   StatusUpdateHandler,
   GeneratedDocument,
+  OrderForShipment,
 } from '../../adapter.interface';
 
-/**
- * ManualAdapter - no API required.
- * Admin enters tracking numbers and status updates via the admin panel.
- */
 @Injectable()
 export class ManualAdapter implements LogisticsAdapter {
   readonly slug = 'manual';
@@ -29,7 +26,7 @@ export class ManualAdapter implements LogisticsAdapter {
   }
 
   async getTrackingStatus(_externalRef: string): Promise<TrackingStatus | null> {
-    return null; // No polling for manual adapter
+    return null;
   }
 
   onStatusUpdate(handler: StatusUpdateHandler): void {
@@ -42,8 +39,8 @@ export class ManualAdapter implements LogisticsAdapter {
     }
   }
 
-  async generateDocuments(_order: AssignShipmentInput['order']): Promise<GeneratedDocument[]> {
-    return []; // AI document generation added in Phase 3
+  async generateDocuments(_order: OrderForShipment): Promise<GeneratedDocument[]> {
+    return [];
   }
 
   async healthCheck() {

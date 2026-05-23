@@ -8,19 +8,9 @@ import {
   TrackingStatus,
   StatusUpdateHandler,
   GeneratedDocument,
+  OrderForShipment,
 } from '../../adapter.interface';
 
-/**
- * DominicanShippingAdapter
- *
- * Integrates with Dominican Shipping as the primary logistics partner.
- * Supports two modes controlled by config:
- *   - 'api'    — calls Dominican Shipping REST API if they have one
- *   - 'manual' — falls back to admin-entered updates (same as ManualAdapter)
- *
- * As Dominican Shipping expands their tech capabilities, this adapter
- * can be upgraded without changing any other part of the platform.
- */
 @Injectable()
 export class DominicanShippingAdapter implements LogisticsAdapter {
   readonly slug = 'dominican-shipping';
@@ -44,7 +34,7 @@ export class DominicanShippingAdapter implements LogisticsAdapter {
       });
       this.logger.log('Dominican Shipping adapter: API mode');
     } else {
-      this.logger.log('Dominican Shipping adapter: Manual mode (no API credentials configured)');
+      this.logger.log('Dominican Shipping adapter: Manual mode');
     }
   }
 
@@ -55,16 +45,16 @@ export class DominicanShippingAdapter implements LogisticsAdapter {
           orderId: input.order.id,
           orderNumber: input.order.orderNumber,
           recipient: {
-            name: `${input.order.buyer.firstName} ${input.order.buyer.lastName}`,
+            name: `${input.order.buyer.firstName ?? ''} ${input.order.buyer.lastName ?? ''}`.trim(),
             email: input.order.buyer.email,
             phone: input.order.buyer.phone,
             address: input.order.address,
           },
           items: input.order.items.map((item) => ({
-            description: item.productSnapshot?.name,
+            description: (item.productSnapshot as Record<string, unknown>)?.['name'],
             quantity: item.quantity,
-            weight: item.productSnapshot?.weightKg,
-            hsCode: item.productSnapshot?.hsCode,
+            weight: (item.productSnapshot as Record<string, unknown>)?.['weightKg'],
+            hsCode: (item.productSnapshot as Record<string, unknown>)?.['hsCode'],
             declaredValue: Number(item.unitPrice) * item.quantity,
           })),
           notes: input.notes,
@@ -77,12 +67,12 @@ export class DominicanShippingAdapter implements LogisticsAdapter {
             ? new Date(response.data.estimatedDelivery)
             : undefined,
         };
-      } catch (error) {
-        this.logger.error(`Dominican Shipping API error: ${error.message}`);
-        return { success: false, message: `API error: ${error.message}` };
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Dominican Shipping API error: ${msg}`);
+        return { success: false, message: `API error: ${msg}` };
       }
     }
-    // Manual fallback
     return {
       success: true,
       message: 'Assigned to Dominican Shipping. Enter tracking reference manually.',
@@ -111,26 +101,22 @@ export class DominicanShippingAdapter implements LogisticsAdapter {
     this.statusHandler = handler;
   }
 
-  /**
-   * Called when Dominican Shipping sends a webhook to our platform.
-   * Endpoint: POST /api/v1/webhooks/dominican-shipping
-   */
-  async handleWebhook(payload: any): Promise<void> {
+  async handleWebhook(payload: Record<string, unknown>): Promise<void> {
     if (!this.statusHandler) return;
     const status: TrackingStatus = {
-      externalRef: payload.reference,
-      currentStatus: payload.status,
-      normalizedStatus: this.normalizeStatus(payload.status),
-      location: payload.location,
-      description: payload.description,
-      occurredAt: new Date(payload.timestamp || Date.now()),
+      externalRef: payload['reference'] as string,
+      currentStatus: payload['status'] as string,
+      normalizedStatus: this.normalizeStatus(payload['status'] as string),
+      location: payload['location'] as string | undefined,
+      description: payload['description'] as string | undefined,
+      occurredAt: new Date((payload['timestamp'] as string) ?? Date.now()),
       rawPayload: payload,
     };
-    await this.statusHandler(payload.reference, status);
+    await this.statusHandler(payload['reference'] as string, status);
   }
 
-  async generateDocuments(order: AssignShipmentInput['order']): Promise<GeneratedDocument[]> {
-    return []; // Phase 3: AI-generated customs declaration
+  async generateDocuments(_order: OrderForShipment): Promise<GeneratedDocument[]> {
+    return [];
   }
 
   async healthCheck() {
@@ -147,16 +133,16 @@ export class DominicanShippingAdapter implements LogisticsAdapter {
 
   private normalizeStatus(partnerStatus: string): string {
     const map: Record<string, string> = {
-      'received': 'CREATED',
-      'picked_up': 'PICKED_UP',
-      'in_transit': 'IN_TRANSIT',
-      'at_customs': 'AT_CUSTOMS',
-      'cleared': 'CUSTOMS_CLEARED',
-      'out_for_delivery': 'OUT_FOR_DELIVERY',
-      'delivered': 'DELIVERED',
-      'failed': 'FAILED_DELIVERY',
-      'returned': 'RETURNED',
+      received: 'CREATED',
+      picked_up: 'PICKED_UP',
+      in_transit: 'IN_TRANSIT',
+      at_customs: 'AT_CUSTOMS',
+      cleared: 'CUSTOMS_CLEARED',
+      out_for_delivery: 'OUT_FOR_DELIVERY',
+      delivered: 'DELIVERED',
+      failed: 'FAILED_DELIVERY',
+      returned: 'RETURNED',
     };
-    return map[partnerStatus?.toLowerCase()] || 'IN_TRANSIT';
+    return map[partnerStatus?.toLowerCase()] ?? 'IN_TRANSIT';
   }
 }
