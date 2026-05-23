@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck API
+        run: cd apps/api && npx tsc --noEmit
+
+      - name: Typecheck Web
+        run: cd apps/web && npx tsc --noEmit
+
+  test-api:
+    name: API Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: dominican_hub
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: dominican_hub_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Prisma client
+        run: cd apps/api && npx prisma generate
+        env:
+          DATABASE_URL: postgresql://dominican_hub:secret@localhost:5432/dominican_hub_test
+
+      - name: Run migrations
+        run: cd apps/api && npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://dominican_hub:secret@localhost:5432/dominican_hub_test
+
+      - name: Run tests
+        run: cd apps/api && npm test
+        env:
+          DATABASE_URL: postgresql://dominican_hub:secret@localhost:5432/dominican_hub_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-at-least-32-characters
+          NODE_ENV: test

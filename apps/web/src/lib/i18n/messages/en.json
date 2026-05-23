@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "home": "Home",
+    "products": "Products",
+    "track": "Track shipment",
+    "login": "Log in",
+    "register": "Sign up"
+  },
+  "auth": {
+    "login": "Log in",
+    "register": "Create account",
+    "email": "Email address",
+    "password": "Password",
+    "forgotPassword": "Forgot password"
+  },
+  "marketplace": {
+    "searchPlaceholder": "Search products...",
+    "addToCart": "Add to cart",
+    "buyNow": "Buy now",
+    "outOfStock": "Out of stock",
+    "shipping": "Shipping",
+    "freeShipping": "Free shipping"
+  },
+  "orders": {
+    "myOrders": "My orders",
+    "orderNumber": "Order number",
+    "trackOrder": "Track order",
+    "status": {
+      "pending_payment": "Pending payment",
+      "payment_confirmed": "Payment confirmed",
+      "awaiting_logistics": "Awaiting logistics",
+      "logistics_assigned": "Logistics assigned",
+      "in_transit": "In transit",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    }
+  },
+  "tracking": {
+    "title": "Track your shipment",
+    "inputPlaceholder": "Enter your tracking number",
+    "track": "Track",
+    "noResults": "No tracking information found"
+  }
+}

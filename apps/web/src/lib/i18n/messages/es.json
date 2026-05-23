@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "products": "Productos",
+    "track": "Rastrear envio",
+    "login": "Iniciar sesion",
+    "register": "Registrarse"
+  },
+  "auth": {
+    "login": "Iniciar sesion",
+    "register": "Crear cuenta",
+    "email": "Correo electronico",
+    "password": "Contrasena",
+    "forgotPassword": "Olvide mi contrasena"
+  },
+  "marketplace": {
+    "searchPlaceholder": "Buscar productos...",
+    "addToCart": "Agregar al carrito",
+    "buyNow": "Comprar ahora",
+    "outOfStock": "Agotado",
+    "shipping": "Envio",
+    "freeShipping": "Envio gratis"
+  },
+  "orders": {
+    "myOrders": "Mis pedidos",
+    "orderNumber": "Numero de pedido",
+    "trackOrder": "Rastrear pedido",
+    "status": {
+      "pending_payment": "Pendiente de pago",
+      "payment_confirmed": "Pago confirmado",
+      "awaiting_logistics": "Esperando logistica",
+      "logistics_assigned": "Logistica asignada",
+      "in_transit": "En transito",
+      "delivered": "Entregado",
+      "cancelled": "Cancelado"
+    }
+  },
+  "tracking": {
+    "title": "Rastrear tu envio",
+    "inputPlaceholder": "Ingresa tu numero de rastreo",
+    "track": "Rastrear",
+    "noResults": "No se encontro informacion de rastreo"
+  }
+}

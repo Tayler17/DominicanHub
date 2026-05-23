@@ -1,0 +1,469 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Dominican Hub — Prisma Schema
+// Integration-first marketplace + logistics orchestration platform
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  BUYER
+  VENDOR
+  ADMIN
+  LOGISTICS_OPERATOR
+  CUSTOMS_AGENT
+  DRIVER
+  SUPER_ADMIN
+}
+
+enum VendorStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  OUT_OF_STOCK
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_CONFIRMED
+  AWAITING_LOGISTICS
+  LOGISTICS_ASSIGNED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  REFUNDED
+  DISPUTE
+}
+
+enum ShipmentStatus {
+  CREATED
+  PICKED_UP
+  IN_TRANSIT
+  AT_CUSTOMS
+  CUSTOMS_CLEARED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED_DELIVERY
+  RETURNED
+  EXCEPTION
+}
+
+enum IntegrationMode {
+  API
+  WEBHOOK
+  CSV
+  MANUAL
+}
+
+enum LogisticsPartnerType {
+  FREIGHT_FORWARDER
+  COURIER
+  WAREHOUSE
+  CUSTOMS_BROKER
+  LAST_MILE
+}
+
+enum LogisticsPartnerStatus {
+  ACTIVE
+  INACTIVE
+  TESTING
+}
+
+enum DocumentType {
+  CUSTOMS_DECLARATION
+  COMMERCIAL_INVOICE
+  PACKING_LIST
+  BILL_OF_LADING
+  PROOF_OF_DELIVERY
+  OTHER
+}
+
+enum CommissionStatus {
+  PENDING
+  HELD
+  RELEASED
+  PAID
+  REFUNDED
+}
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+  PUSH
+  SMS
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  DELIVERED
+}
+
+// ─── USERS ───────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  phone          String?  @unique
+  passwordHash   String
+  role           UserRole @default(BUYER)
+  firstName      String?
+  lastName       String?
+  avatarUrl      String?
+  preferredLang  String   @default("es")
+  isEmailVerified Boolean @default(false)
+  isPhoneVerified Boolean @default(false)
+  isActive       Boolean  @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vendor         Vendor?
+  orders         Order[]
+  addresses      Address[]
+  refreshTokens  RefreshToken[]
+  notifications  Notification[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Address {
+  id          String  @id @default(uuid())
+  userId      String
+  label       String? // "Home", "Work", etc.
+  fullName    String
+  phone       String
+  line1       String
+  line2       String?
+  city        String
+  province    String?
+  country     String  @default("DO")
+  postalCode  String?
+  isDefault   Boolean @default(false)
+  createdAt   DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@map("addresses")
+}
+
+// ─── VENDORS ─────────────────────────────────────────────────────────────────
+
+model Vendor {
+  id                 String       @id @default(uuid())
+  userId             String       @unique
+  businessName       String
+  businessNameSlug   String       @unique
+  description        String?
+  logoUrl            String?
+  bannerUrl          String?
+  email              String
+  phone              String?
+  country            String       @default("DO")
+  status             VendorStatus @default(PENDING)
+  commissionRate     Decimal      @default(10.00) @db.Decimal(5, 2) // percentage
+  stripeAccountId    String?      // Stripe Connect Express account ID
+  stripeOnboarded    Boolean      @default(false)
+  taxId              String?
+  websiteUrl         String?
+  rating             Decimal      @default(0) @db.Decimal(3, 2)
+  totalSales         Int          @default(0)
+  metadata           Json?        // flexible extra fields
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  products   Product[]
+  orderItems OrderItem[]
+  commissions Commission[]
+
+  @@map("vendors")
+}
+
+// ─── PRODUCTS ────────────────────────────────────────────────────────────────
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  nameEs      String
+  slug        String     @unique
+  description String?
+  imageUrl    String?
+  parentId    String?
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+
+  parent     Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryTree")
+  products   Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id              String        @id @default(uuid())
+  vendorId        String
+  categoryId      String?
+  name            String
+  nameEs          String?
+  slug            String        @unique
+  description     String?
+  descriptionEs   String?
+  price           Decimal       @db.Decimal(10, 2)
+  compareAtPrice  Decimal?      @db.Decimal(10, 2)
+  currency        String        @default("USD")
+  weightKg        Decimal?      @db.Decimal(8, 3)
+  lengthCm        Decimal?      @db.Decimal(8, 2)
+  widthCm         Decimal?      @db.Decimal(8, 2)
+  heightCm        Decimal?      @db.Decimal(8, 2)
+  hsCode          String?       // Harmonized System code for customs
+  originCountry   String?       // ISO country code
+  stockQty        Int           @default(0)
+  sku             String?
+  status          ProductStatus @default(DRAFT)
+  isFeatured      Boolean       @default(false)
+  tags            String[]
+  images          Json          @default("[]") // [{url, alt, isPrimary}]
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  vendor     Vendor      @relation(fields: [vendorId], references: [id])
+  category   Category?   @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+// ─── ORDERS ──────────────────────────────────────────────────────────────────
+
+model Order {
+  id               String      @id @default(uuid())
+  orderNumber      String      @unique // human-readable: DH-2024-00001
+  buyerId          String
+  addressId        String?
+  status           OrderStatus @default(PENDING_PAYMENT)
+  subtotal         Decimal     @db.Decimal(10, 2)
+  shippingCost     Decimal     @default(0) @db.Decimal(10, 2)
+  taxAmount        Decimal     @default(0) @db.Decimal(10, 2)
+  discountAmount   Decimal     @default(0) @db.Decimal(10, 2)
+  total            Decimal     @db.Decimal(10, 2)
+  currency         String      @default("USD")
+  paymentIntentId  String?     // Stripe Payment Intent
+  paymentMethod    String?
+  paidAt           DateTime?
+  notes            String?
+  metadata         Json?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  buyer      User        @relation(fields: [buyerId], references: [id])
+  address    Address?    @relation(fields: [addressId], references: [id])
+  items      OrderItem[]
+  shipments  Shipment[]
+  commissions Commission[]
+  documents  PartnerDocument[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String
+  productId   String
+  vendorId    String
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(10, 2)
+  totalPrice  Decimal @db.Decimal(10, 2)
+  productSnapshot Json // snapshot of product at time of order
+  createdAt   DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+  vendor  Vendor  @relation(fields: [vendorId], references: [id])
+
+  @@map("order_items")
+}
+
+// ─── LOGISTICS PARTNERS ──────────────────────────────────────────────────────
+
+model LogisticsPartner {
+  id             String                 @id @default(uuid())
+  name           String
+  slug           String                 @unique
+  type           LogisticsPartnerType
+  integrationMode IntegrationMode       @default(MANUAL)
+  status         LogisticsPartnerStatus @default(ACTIVE)
+  logoUrl        String?
+  contactEmail   String?
+  contactPhone   String?
+  webhookSecret  String?               // for verifying inbound webhooks
+  config         Json                  @default("{}") // API keys, base URLs, etc.
+  supportedRoutes Json                 @default("[]") // [{origin, destination}]
+  notes          String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  shipments       Shipment[]
+  partnerUsers    PartnerUser[]
+
+  @@map("logistics_partners")
+}
+
+// Users that belong to a logistics partner (operators who update status)
+model PartnerUser {
+  id        String   @id @default(uuid())
+  userId    String
+  partnerId String
+  createdAt DateTime @default(now())
+
+  partner LogisticsPartner @relation(fields: [partnerId], references: [id])
+
+  @@unique([userId, partnerId])
+  @@map("partner_users")
+}
+
+// ─── SHIPMENTS ───────────────────────────────────────────────────────────────
+
+model Shipment {
+  id              String         @id @default(uuid())
+  orderId         String
+  partnerId       String?
+  externalRef     String?        // partner's own reference/tracking number
+  carrier         String?        // DHL, FedEx, Dominican Shipping, etc.
+  trackingNumber  String?
+  status          ShipmentStatus @default(CREATED)
+  originAddress   Json?          // {line1, city, country, ...}
+  destAddress     Json?
+  weightKg        Decimal?       @db.Decimal(8, 3)
+  estimatedDelivery DateTime?
+  deliveredAt     DateTime?
+  labelUrl        String?        // shipping label PDF
+  assignedBy      String?        // admin user ID who assigned
+  assignedAt      DateTime?
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  order   Order             @relation(fields: [orderId], references: [id])
+  partner LogisticsPartner? @relation(fields: [partnerId], references: [id])
+  events  TrackingEvent[]
+  documents PartnerDocument[]
+
+  @@map("shipments")
+}
+
+// Append-only tracking event log — never update, only insert
+model TrackingEvent {
+  id          String         @id @default(uuid())
+  shipmentId  String
+  status      ShipmentStatus
+  description String?
+  location    String?
+  carrierCode String?        // carrier's own status code
+  source      String         @default("manual") // api | webhook | csv | manual
+  occurredAt  DateTime       @default(now())
+  rawPayload  Json?          // original carrier/partner payload
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("tracking_events")
+}
+
+// ─── DOCUMENTS ───────────────────────────────────────────────────────────────
+
+model PartnerDocument {
+  id          String       @id @default(uuid())
+  orderId     String
+  shipmentId  String?
+  type        DocumentType
+  url         String
+  filename    String
+  generatedBy String?      // user ID
+  sentTo      String?      // email sent to
+  sentAt      DateTime?
+  notes       String?
+  createdAt   DateTime     @default(now())
+
+  order    Order     @relation(fields: [orderId], references: [id])
+  shipment Shipment? @relation(fields: [shipmentId], references: [id])
+
+  @@map("partner_documents")
+}
+
+// ─── PAYMENTS & COMMISSIONS ──────────────────────────────────────────────────
+
+model Commission {
+  id              String           @id @default(uuid())
+  orderId         String
+  vendorId        String
+  orderTotal      Decimal          @db.Decimal(10, 2)
+  commissionRate  Decimal          @db.Decimal(5, 2)
+  commissionAmount Decimal         @db.Decimal(10, 2)
+  vendorAmount    Decimal          @db.Decimal(10, 2)  // what vendor receives
+  status          CommissionStatus @default(PENDING)
+  stripeTransferId String?
+  heldAt          DateTime?
+  releasedAt      DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  order  Order  @relation(fields: [orderId], references: [id])
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  @@map("commissions")
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+
+model Notification {
+  id         String              @id @default(uuid())
+  userId     String
+  channel    NotificationChannel
+  status     NotificationStatus  @default(PENDING)
+  subject    String?
+  body       String
+  metadata   Json?               // {orderId, shipmentId, etc.}
+  sentAt     DateTime?
+  failedAt   DateTime?
+  failReason String?
+  createdAt  DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
