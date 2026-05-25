@@ -1,9 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { useCartStore } from '@/stores/cart.store';
+import { useEffect, useState } from 'react';
 
 export default function Navbar() {
   const cartCount = useCartStore(s => s.count());
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   return (
     <nav style={{
@@ -43,12 +47,13 @@ export default function Navbar() {
           </Link>
           <Link href="/carrito" style={{ position: 'relative', textDecoration: 'none',
             color: 'var(--c-ink)', padding: '0.4rem 0.6rem', borderRadius: 8,
-            background: cartCount > 0 ? 'var(--c-palm-light)' : 'transparent' }}>
+            background: mounted && cartCount > 0 ? 'var(--c-palm-light)' : 'transparent',
+            display: 'flex', alignItems: 'center' }}>
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2 5h12M9 19a1 1 0 11-2 0 1 1 0 012 0zm10 0a1 1 0 11-2 0 1 1 0 012 0z"/>
             </svg>
-            {cartCount > 0 && (
+            {mounted && cartCount > 0 && (
               <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--c-palm)',
                 color: 'white', borderRadius: '50%', width: 18, height: 18,
                 fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
