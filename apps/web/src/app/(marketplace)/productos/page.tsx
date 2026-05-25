@@ -1,28 +1,42 @@
 import Navbar from '@/components/layout/Navbar';
 import Link from 'next/link';
 
-const API = 'http://localhost:3002/api/v1';
-
 async function getProducts(search?: string, categoryId?: string) {
   try {
     const params = new URLSearchParams({ limit: '24' });
     if (search) params.set('search', search);
     if (categoryId) params.set('categoryId', categoryId);
-    const res = await fetch(`${API}/products?${params}`, { cache: 'no-store' });
-    if (!res.ok) return { products: [], total: 0 };
+    
+    const url = `http://localhost:3002/api/v1/products?${params}`;
+    const res = await fetch(url, { 
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' }
+    });
+    
+    if (!res.ok) {
+      console.error('[Products] API error:', res.status, res.statusText);
+      return { products: [], total: 0, error: `API error: ${res.status}` };
+    }
+    
     return res.json();
-  } catch (e) {
-    console.error('Products fetch error:', e);
-    return { products: [], total: 0 };
+  } catch (e: any) {
+    console.error('[Products] Fetch failed:', e.message);
+    return { products: [], total: 0, error: e.message };
   }
 }
 
 async function getCategories() {
   try {
-    const res = await fetch(`${API}/products/categories`, { cache: 'no-store' });
+    const res = await fetch('http://localhost:3002/api/v1/products/categories', { 
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' }
+    });
     if (!res.ok) return [];
     return res.json();
-  } catch { return []; }
+  } catch (e: any) {
+    console.error('[Categories] Fetch failed:', e.message);
+    return [];
+  }
 }
 
 export default async function ProductsPage({
@@ -39,6 +53,15 @@ export default async function ProductsPage({
     <>
       <Navbar />
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '2rem 1.5rem' }}>
+        
+        {/* Debug info - remove in production */}
+        {(data as any).error && (
+          <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 8,
+            padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.85rem', color: '#856404' }}>
+            API Error: {(data as any).error} — Check that the API is running on port 3002
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
           <aside style={{ width: 220, flexShrink: 0 }}>
             <h3 style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.75rem',
@@ -54,6 +77,11 @@ export default async function ProductsPage({
                   fontWeight: !searchParams.categoria ? 500 : 400 }}>
                 Todos los productos
               </Link>
+              {categories.length === 0 && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--c-muted)', padding: '0.5rem 0.75rem' }}>
+                  Sin categorias
+                </p>
+              )}
               {categories.map((cat: any) => (
                 <Link key={cat.id} href={`/productos?categoria=${cat.id}`}
                   style={{ padding: '0.5rem 0.75rem', borderRadius: 6, textDecoration: 'none',
@@ -71,7 +99,7 @@ export default async function ProductsPage({
             <div style={{ display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', marginBottom: '1.5rem' }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 400 }}>
-                {searchParams.search ? `Resultados: "${searchParams.search}"` : 'Todos los productos'}
+                Todos los productos
               </h1>
               <span style={{ fontSize: '0.875rem', color: 'var(--c-muted)' }}>
                 {data.total} productos
